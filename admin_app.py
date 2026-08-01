@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import streamlit as st
 
-# File Paths (Must match the main app)
+# File Paths (Must match the main app precisely)
 METRICS_FILE = ".vektor_admin_metrics.json"
 PINS_FILE = ".vektor_activation_pins.json"
 
@@ -19,7 +19,7 @@ def load_json(filepath):
     try:
       with open(filepath, "r") as f:
         return json.load(f)
-    except:
+    except Exception:
       return {}
   return {}
 
@@ -45,17 +45,22 @@ st.header("👥 User Activity & Security Monitor")
 users_data = load_json(METRICS_FILE)
 
 if users_data:
-  # Convert JSON to a readable table
   df = pd.DataFrame.from_dict(users_data, orient="index")
+  # Ensure standard columns exist to prevent KeyError rendering crashes
+  expected_cols = [
+      "username",
+      "status",
+      "payment_status",
+      "registered_at",
+      "last_active",
+      "license_expiry",
+  ]
+  for col in expected_cols:
+    if col not in df.columns:
+      df[col] = "N/A"
+
   st.dataframe(
-      df[[
-          "username",
-          "status",
-          "payment_status",
-          "registered_at",
-          "last_active",
-          "license_expiry",
-      ]],
+      df[expected_cols],
       use_container_width=True,
   )
 else:
@@ -84,8 +89,8 @@ with col1:
         "created_at": datetime.now(ZoneInfo("Africa/Lagos")).strftime(
             "%Y-%m-%d %H:%M:%S"
         ),
-        "days_allotted": days_to_add,
-        "is_forever": is_lifetime,
+        "days_allotted": int(days_to_add),
+        "is_forever": bool(is_lifetime),
         "claimed_by": None,
     }
     save_json(PINS_FILE, pins_db)
